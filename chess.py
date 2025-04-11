@@ -17,6 +17,8 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 128, 0)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)  # Color for highlighting possible moves
+PINK = (194, 145, 164)
 
 # Chess pieces
 PIECES = {
@@ -48,53 +50,51 @@ initial_board = [
 
 # Initialize screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Chess")
+pygame.display.set_caption("genChess")
 
-def draw_board(screen):
-    """Draw the chessboard and pieces."""
+board = initial_board
+def draw_board(screen, selected_piece=None):
     for row in range(8):
         for col in range(8):
-            color = WHITE if (row + col) % 2 == 0 else GREEN
-            pygame.draw.rect(screen, color, pygame.Rect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            color = WHITE if (row + col) % 2 == 0 else PINK
+            if selected_piece and (row, col) in get_possible_moves_for_piece(board, selected_piece):
+                pygame.draw.rect(screen, YELLOW, pygame.Rect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            else:
+                pygame.draw.rect(screen, color, pygame.Rect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
             
             piece = board[row][col]
             if piece != ' ':
-                # Check if this is the selected piece
-                if (row, col) == selected_piece:
-                    # Scale the image by 25% for highlighting
+                if selected_piece == (row, col):
                     scaled_size = int(SQUARE_SIZE * 1.25)
                     x = col * SQUARE_SIZE + (SQUARE_SIZE - scaled_size) // 2
                     y = row * SQUARE_SIZE + (SQUARE_SIZE - scaled_size) // 2
                     screen.blit(PIECES[piece], pygame.Rect(x, y, scaled_size, scaled_size))
                 else:
-                    # Draw the piece normally
                     screen.blit(PIECES[piece], pygame.Rect(col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
 
 
 def is_valid_move(board, start, end):
     piece = board[start[0]][start[1]]
     target_piece = board[end[0]][end[1]]
     
-    # Check if the move is within bounds
     if not (0 <= end[0] < 8 and 0 <= end[1] < 8):
         return False
     
-    # Check if moving to the same square or capturing own piece
     if (piece.isupper() and target_piece.isupper()) or (piece.islower() and target_piece.islower()):
         return False
     
-    # Determine piece type and check movement rules
-    if piece.lower() == 'p':  # Pawn
+    if piece.lower() == 'p':  
         return is_valid_pawn_move(board, start, end)
-    elif piece.lower() == 'n':  # Knight
+    elif piece.lower() == 'n': 
         return is_valid_knight_move(start, end)
-    elif piece.lower() == 'b':  # Bishop
+    elif piece.lower() == 'b': 
         return is_valid_bishop_move(board, start, end)
-    elif piece.lower() == 'r':  # Rook
+    elif piece.lower() == 'r': 
         return is_valid_rook_move(board, start, end)
-    elif piece.lower() == 'q':  # Queen
+    elif piece.lower() == 'q': 
         return is_valid_queen_move(board, start, end)
-    elif piece.lower() == 'k':  # King
+    elif piece.lower() == 'k': 
         return is_valid_king_move(board, start, end)
     
     return False
@@ -104,7 +104,6 @@ def is_valid_pawn_move(board, start, end):
     start_row, start_col = start
     end_row, end_col = end
 
-    # Determine pawn color and direction
     if piece.isupper():  # White pawn
         direction = -1
         initial_row = 6
@@ -115,24 +114,19 @@ def is_valid_pawn_move(board, start, end):
     row_diff = end_row - start_row
     col_diff = abs(end_col - start_col)
 
-    # Check for valid forward moves
     if col_diff == 0:
-        # One square forward
         if row_diff == direction and board[end_row][end_col] == ' ':
             return True
-        # Two squares forward (only on first move)
-        elif row_diff == 2 * direction and start_row == initial_row and all(board[start_row + i * direction][start_col] == ' ' for i in range(1, 3)): 
+        elif row_diff == 2 * direction and start_row == initial_row and all(board[start_row + i * direction][start_col] == ' ' 
+for i in range(1, 3)): 
             return True
 
-    # Check for captures
     if col_diff == 1 and row_diff == direction:
         target_piece = board[end_row][end_col]
         if (piece.isupper() and target_piece.islower()) or (piece.islower() and target_piece.isupper()):
             return True
 
     return False
-
-
 
 def is_valid_knight_move(start, end):
     row_diff = abs(end[0] - start[0])
@@ -171,7 +165,6 @@ def is_valid_king_move(board, start, end):
     col_diff = abs(end[1] - start[1])
     return row_diff <= 1 and col_diff <= 1
 
-
 def get_legal_moves(board, player):
     legal_moves = []
     for row in range(8):
@@ -184,13 +177,12 @@ def get_legal_moves(board, player):
                             legal_moves.append(((row, col), (end_row, end_col)))
     return legal_moves
 
-# Bot move function
 def is_in_check(board, king_color):
-    """Determine if the king of the given color is under attack."""
     king_position = find_king_position(board, king_color)
-    opponent_color = 'black' if king_color == 'white' else 'white'
     if king_position is None:
         return False
+    
+    opponent_color = 'black' if king_color == 'white' else 'white'
     
     for row in range(8):
         for col in range(8):
@@ -201,7 +193,6 @@ def is_in_check(board, king_color):
     return False
 
 def find_king_position(board, color):
-    """Find the position of the king for the given color."""
     king = 'K' if color == 'white' else 'k'
     for row in range(8):
         for col in range(8):
@@ -210,83 +201,123 @@ def find_king_position(board, color):
     return None
 
 def is_checkmate(board, player):
-    """Determine if the current player is in checkmate."""
     return is_in_check(board, player) and not has_legal_moves(board, player)
 
 def is_stalemate(board, player):
-    """Determine if the current player is in stalemate."""
     return not is_in_check(board, player) and not has_legal_moves(board, player)
 
 def has_legal_moves(board, player):
-    """Check if the player has any legal moves."""
     legal_moves = get_legal_moves(board, player)
     return len(legal_moves) > 0
 
 def evaluate_move(board, move):
-    """Evaluate a move based on heuristics and return a score."""
     start, end = move
     piece = board[start[0]][start[1]]
     target_piece = board[end[0]][end[1]]
     
     score = 0
     
-    # Prioritize capturing higher-value pieces
     if target_piece != ' ':
-        if target_piece.lower() == 'q':  # Queen
+        if target_piece.lower() == 'q':  
             score += 9
-        elif target_piece.lower() == 'r':  # Rook
+        elif target_piece.lower() == 'r': 
             score += 5
-        elif target_piece.lower() == 'b' or target_piece.lower() == 'n':  # Bishop or Knight
+        elif target_piece.lower() == 'b' or target_piece.lower() == 'n': 
             score += 3
-        elif target_piece.lower() == 'p':  # Pawn
+        elif target_piece.lower() == 'p': 
             score += 1
     
-    # Prioritize controlling the center (e.g., moves to center squares)
     center = [(3, 3), (3, 4), (4, 3), (4, 4)]
     if end in center:
         score += 2
     
-    # Penalize moving pieces unnecessarily (e.g., non-capturing moves)
     if target_piece == ' ':
         score -= 1
     
     return score
 
 def prioritize_moves(legal_moves, board):
-    """Prioritize moves based on their scores and return the top few."""
     scored_moves = [(move, evaluate_move(board, move)) for move in legal_moves]
-    sorted_moves = sorted(scored_moves, key=lambda x: x[1], reverse=True)  # Sort by score
-    
-    # Keep only the top 3 moves (adjust as needed)
+    sorted_moves = sorted(scored_moves, key=lambda x: x[1], reverse=True)  
     top_moves = [move for move, score in sorted_moves[:3]]
-    return top_moves if top_moves else legal_moves  # Fallback to all moves if no top moves
+    return top_moves if top_moves else legal_moves  
 
 def bot_make_move(board):
-    """Bot makes a prioritized move for black pieces."""
     legal_moves = get_legal_moves(board, 'black')
-    if not legal_moves:
-        return  # No legal moves available (stalemate or checkmate)
     
+    if is_in_check(board, 'black'):
+        check_resolving_moves = [move for move in legal_moves if not is_in_check_after_move(board, move)]
+        if check_resolving_moves:
+            legal_moves = check_resolving_moves
+    
+    if not legal_moves:
+        return  
+
     prioritized_moves = prioritize_moves(legal_moves, board)
     if not prioritized_moves:
-        return  # No prioritized moves available
-    
-    move = random.choice(prioritized_moves)  # Choose randomly from the top moves
+        return  
+
+    move = random.choice(prioritized_moves)
     start, end = move
     board[end[0]][end[1]] = board[start[0]][start[1]]
     board[start[0]][start[1]] = ' '
 
+def is_in_check_after_move(board, move):
+    start, end = move
+    piece = board[start[0]][start[1]]
+    
+    temp_board = [row[:] for row in board]
+    temp_board[end[0]][end[1]] = piece
+    temp_board[start[0]][start[1]] = ' '
+    
+    return is_in_check(temp_board, 'black')
+
+def check_pawn_promotion(board):
+    """Check for pawns that need to be promoted."""
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece == 'P' and row == 0:  # White pawn reaches last rank
+                print(f"White pawn detected at ({row}, {col}) for promotion")  # Debug print
+                promote_pawn(board, row, col)
+                print(f"After promotion, piece at ({row}, {col}) is: {board[row][col]}")  # Debug print
+            elif piece == 'p' and row == 7:  # Black pawn reaches first rank
+                print(f"Black pawn detected at ({row}, {col}) for promotion")  # Debug print
+                promote_pawn(board, row, col)
+                print(f"After promotion, piece at ({row}, {col}) is: {board[row][col]}")  # Debug print
+
+def promote_pawn(board, row, col):
+    """Promote a pawn to a queen at the given position."""
+    if board[row][col].lower() == 'p':
+        original_piece = board[row][col]
+        if original_piece.isupper():  # White pawn
+            board[row][col] = 'Q'  # Promote to queen
+            print(f"Promoted white pawn at ({row}, {col}) to Queen")  # Debug print
+        else:  # Black pawn
+            board[row][col] = 'q'
+            print(f"Promoted black pawn at ({row}, {col}) to Queen")  # Debug print
+    else:
+        print(f"Piece at ({row}, {col}) is not a pawn: {board[row][col]}")  # Debug print
+
+
+
+def get_possible_moves_for_piece(board, start):
+    possible_moves = []
+    for end_row in range(8):
+        for end_col in range(8):
+            if is_valid_move(board, start, (end_row, end_col)):
+                possible_moves.append((end_row, end_col))
+    return possible_moves
 
 def print_board(board):
     for row in board:
         print(" ".join([str(cell) if cell != ' ' else '.' for cell in row]))
     print()
 
-
 def main():
     global board, selected_piece
     board = initial_board
-    selected_piece = None
+    selected_piece = None  # No piece selected initially
     player_turn = 'white'  # Start with white's turn
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -301,41 +332,55 @@ def main():
                 pos = pygame.mouse.get_pos()
                 col = pos[0] // SQUARE_SIZE
                 row = pos[1] // SQUARE_SIZE
-                if selected_piece is None:
-                    selected_piece = (row, col)  # Highlight the selected piece
+                
+                if selected_piece is not None and selected_piece == (row, col):
+                    # Deselect the piece if clicked again
+                    selected_piece = None
+                elif selected_piece is None:
+                    # Select a piece to move
+                    piece = board[row][col]
+                    if (player_turn == 'white' and piece.isupper()) or (player_turn == 'black' and piece.islower()):
+                        selected_piece = (row, col)
                 else:
+                    # Attempt to move the selected piece
                     end_row, end_col = row, col
                     start_row, start_col = selected_piece
+                    
                     if is_valid_move(board, (start_row, start_col), (end_row, end_col)):
                         board[end_row][end_col] = board[start_row][start_col]
                         board[start_row][start_col] = ' '
+                        
+                        check_pawn_promotion(board)
+                        print("Checked for pawn promotion")  # Debug print
+
                         selected_piece = None  # Clear selection after moving
                         
-                        # Check for checkmate or stalemate after white's move
-                        if is_checkmate(board, 'black'):
-                            print("Checkmate! White wins!")
-                            return
-                        elif is_stalemate(board, 'white'):
-                            print("Stalemate! It's a draw.")
-                            return
-                        player_turn = 'black'  # Switch to black's turn
+                        if is_in_check(board, 'white'):
+                            if is_checkmate(board, 'white'):
+                                print("Checkmate! Black wins!")
+                                return
+                            elif is_stalemate(board, 'white'):
+                                print("Stalemate! It's a draw.")
+                                return
+                        player_turn = 'black'
 
         if player_turn == 'black':
             bot_make_move(board)
+            check_pawn_promotion(board)  # Check for pawn promotion after bot's move
             
-            # Check for checkmate or stalemate after black's move
-            if is_checkmate(board, 'white'):
-                print("Checkmate! Black wins!")
-                return
-            elif is_stalemate(board, 'black'):
-                print("Stalemate! It's a draw.")
-                return
-            player_turn = 'white'  # Switch back to white's turn
+            if is_in_check(board, 'black'):
+                if is_checkmate(board, 'black'):
+                    print("Checkmate! White wins!")
+                    return
+                elif is_stalemate(board, 'black'):
+                    print("Stalemate! It's a draw.")
+                    return
+            player_turn = 'white'
 
-        screen.fill(BLACK)  # Clear the screen
-        draw_board(screen)  # Draw the board with highlighted piece
-        pygame.display.flip()  # Update the display
-        clock.tick(60)  # Cap the frame rate
+        screen.fill(BLACK)
+        draw_board(screen, selected_piece)
+        pygame.display.flip()
+        clock.tick(60)
 
 if __name__ == "__main__":
     main()
