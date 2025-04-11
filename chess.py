@@ -329,16 +329,17 @@ def main():
                         temp_board = [r[:] for r in board]
                         temp_board[end_row][end_col] = temp_board[start_row][start_col]
                         temp_board[start_row][start_col] = ' '
-                        check_pawn_promotion(board)
+                        check_pawn_promotion(temp_board)  # Check promotion before making the move
                         if not is_in_check(temp_board, player_turn):
                             board[end_row][end_col] = board[start_row][start_col]
                             board[start_row][start_col] = ' '
+                            check_pawn_promotion(board)  # Check promotion after making the move
                             selected_piece = None
                             player_turn = 'black'
 
         if player_turn == 'black':
             bot_make_move(board)
-            check_pawn_promotion(board)
+            check_pawn_promotion(board)  # Check promotion after bot's move
             player_turn = 'white'
 
         if is_checkmate(board, 'white'):
@@ -356,3 +357,5 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+#If a pawn is promoted to a queen - the bot doesn't move his black king even if he is in check ... How do I fix that?
